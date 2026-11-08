@@ -1,0 +1,13 @@
+name = "vedashield-ai"
+main = "server/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[vars]
+NODE_ENV = "production"
+
+# Add secrets via: wrangler secret put GEMINI_API_KEY

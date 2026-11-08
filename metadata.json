@@ -1,0 +1,7 @@
+{
+  "name": "AnatoVerse 3D",
+  "description": "VedaShield AI — Family Healthcare PWA with AI medical report scanner, bilingual Hindi/English insights, interactive 3D human anatomy, and verified medicine information.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

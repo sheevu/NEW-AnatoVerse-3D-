@@ -1,0 +1,17 @@
+{
+  "name": "VedaShield AI — Family Healthcare",
+  "short_name": "VedaShield",
+  "description": "AI-powered medical report scanner, bilingual Hindi/English explanations, and interactive 3D human anatomy.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

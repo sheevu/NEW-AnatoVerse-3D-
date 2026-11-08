@@ -1,0 +1,126 @@
+{
+  "app": {
+    "title": "VedaShield AI",
+    "subtitle": "Your family's health, understood",
+    "tagline": "Private medical report insights, interactive 3D human anatomy, and verified medicine information.",
+    "disclaimer": "Informational & educational health tool only. Never replaces qualified medical diagnosis, dosage, or clinical advice."
+  },
+  "nav": {
+    "dashboard": "Health Dashboard",
+    "anatomy": "3D Human Anatomy",
+    "scanner": "Scan Medical Report",
+    "wellness": "Ayurveda & Wellness",
+    "medicines": "Medicine Library",
+    "records": "Health Records",
+    "family": "Family Care",
+    "settings": "Settings"
+  },
+  "family": {
+    "title": "Family Health Profiles",
+    "subtitle": "Private health history and medical records for each family member",
+    "activeMember": "Active Member",
+    "switchMember": "Switch",
+    "addMember": "Add Family Member",
+    "name": "Full Name",
+    "relationship": "Relationship",
+    "dob": "Date of Birth",
+    "bloodGroup": "Blood Group",
+    "allergies": "Known Allergies",
+    "chronicConditions": "Chronic Health Conditions",
+    "notes": "Emergency & Health Notes",
+    "save": "Save Profile",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "relationships": {
+      "Self": "Self",
+      "Spouse": "Spouse",
+      "Parent": "Parent",
+      "Child": "Child",
+      "Grandparent": "Grandparent",
+      "Other": "Other"
+    }
+  },
+  "scanner": {
+    "title": "AI Medical Report Scanner",
+    "subtitle": "Upload or capture lab reports, prescriptions, or blood panels",
+    "dropzone": "Drag & drop report (PDF, PNG, JPG) or click to browse",
+    "cameraBtn": "Use Camera to Capture",
+    "sampleBtn": "Or Try a Realistic Preset Report",
+    "presets": {
+      "metabolic": "Metabolic & Lipid Panel (Prediabetes / Cholesterol)",
+      "liver": "Liver Function Test (SGPT / SGOT Enzymes)",
+      "cbc": "Complete Blood Count (CBC & Hemoglobin)"
+    },
+    "processing": "Extracting medical data with Gemini AI OCR...",
+    "verificationTitle": "Step 2: Verify Extracted Lab Values",
+    "verificationSubtitle": "Review and confirm each test result, unit, and reference range before saving",
+    "testName": "Test Name",
+    "value": "Value",
+    "unit": "Unit",
+    "refRange": "Reference Range",
+    "status": "Status",
+    "organ": "Associated Organ",
+    "addRow": "Add Test Row",
+    "saveReport": "Save & View AI Insights",
+    "discard": "Discard"
+  },
+  "insights": {
+    "title": "AI Health Insights",
+    "subtitle": "Bilingual educational analysis for this report",
+    "summaryHeading": "Plain-Language Report Summary",
+    "findingsHeading": "Detailed Biomarker Breakdown",
+    "organHeading": "3D Organ Impact Visualization",
+    "questionsHeading": "Questions to Ask Your Doctor",
+    "withinRange": "Within Standard Range",
+    "aboveRange": "Above Standard Range",
+    "belowRange": "Below Standard Range",
+    "notCompared": "Range Not Provided",
+    "shareWhatsApp": "Share Summary via WhatsApp",
+    "viewIn3D": "View Highlighted in 3D Anatomy",
+    "safetyNotice": "Notice: These insights are generated using clinical reference ranges for educational purposes. Always consult your consulting doctor for definitive medical diagnosis and treatment plans."
+  },
+  "anatomy": {
+    "title": "Interactive 3D Human Anatomy",
+    "subtitle": "Explore organs and see how your lab report findings connect to the body",
+    "bodyTransparency": "Body Shell Transparency",
+    "resetCamera": "Reset View",
+    "selectOrgan": "Select Organ to Inspect",
+    "allOrgans": "Overview (All Organs)",
+    "highlightedFromReport": "Highlighted based on latest report findings",
+    "isolateMode": "Focus Mode",
+    "organs": {
+      "heart": "Heart",
+      "brain": "Brain",
+      "lungs": "Lungs",
+      "liver": "Liver",
+      "kidneys": "Kidneys",
+      "pancreas": "Pancreas",
+      "stomach": "Stomach",
+      "intestines": "Intestines"
+    }
+  },
+  "medicines": {
+    "title": "Indian Medicine & Generic Library",
+    "subtitle": "Search 100+ trusted Indian brands, active ingredients, uses, and precautions",
+    "searchPlaceholder": "Search by brand name or generic (e.g. Dolo 650, Metformin, Telma, Pan-D)...",
+    "brand": "Brand Name",
+    "generic": "Active Generic / Formulation",
+    "category": "Therapeutic Class",
+    "uses": "Common Approved Uses",
+    "precautions": "Safety Precautions & Warnings",
+    "sideEffects": "Known Side Effects",
+    "food": "Food & Timing Directions",
+    "prescriptionRequired": "Prescription Required (Schedule H)",
+    "otc": "Over the Counter (OTC)",
+    "source": "Verified Source"
+  },
+  "share": {
+    "modalTitle": "Share Health Summary",
+    "modalSubtitle": "Review the summary before sharing via WhatsApp or device",
+    "consentCheckbox": "I confirm that I have reviewed this summary and consent to sharing it via WhatsApp.",
+    "sendWhatsApp": "Open WhatsApp",
+    "nativeShare": "Share with Other Apps",
+    "copyText": "Copy Summary Text",
+    "copied": "Copied to clipboard!"
+  }
+}
