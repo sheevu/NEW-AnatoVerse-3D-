@@ -1,6 +1,6 @@
 import React, { Suspense, useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Html } from '@react-three/drei';
+import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { OrganKey, TestRow, SkinMode, AnatomicalLayers, AnatomicalSystemKey } from '../../types';
 import { ORGANS } from '../../services/medicalRules';
@@ -47,9 +47,14 @@ import {
   Settings,
   FileText,
   X,
+  Scan,
 } from 'lucide-react';
 import { ANATOMICAL_STRUCTURES } from '../../data/anatomyNomenclature';
 import { DeepAnatomyModal } from './DeepAnatomyModal';
+import { ClinicalDrawer } from './ClinicalDrawer';
+import { ErgonomicControlDock } from './ErgonomicControlDock';
+import { AnatomyQuizHUD } from './AnatomyQuizHUD';
+import { DiagnosticScanFusionPanel } from './DiagnosticScanFusionPanel';
 import { playOrganClickChime } from '../../utils/audioChime';
 import bp3dCatalog from '../../data/bp3dCatalog.json';
 import { web3Service, Web3AttestationResult } from '../../services/web3HealthVerification';
@@ -159,21 +164,38 @@ function MedicalOrganCallout({
   organKey,
   status,
   lang,
+  explodedFactor = 0,
   onUnzoom,
 }: {
   organKey: OrganKey;
   status?: 'high' | 'low' | 'within';
   lang: string;
+  explodedFactor?: number;
   onUnzoom: () => void;
 }) {
   const meta = ORGANS[organKey];
-  const organPos = useMemo(() => new THREE.Vector3(...meta.position), [meta]);
+  const nomenclature = ANATOMICAL_STRUCTURES[organKey];
+  const organPos = useMemo(() => {
+    const base = new THREE.Vector3(...meta.position);
+    if (nomenclature?.radialExplosionVector) {
+      base.x += nomenclature.radialExplosionVector[0] * explodedFactor;
+      base.y += nomenclature.radialExplosionVector[1] * explodedFactor;
+      base.z += nomenclature.radialExplosionVector[2] * explodedFactor;
+    }
+    return base;
+  }, [meta, nomenclature, explodedFactor]);
 
   // Floating badge anchor position offset from the organ
   const badgePos = useMemo(() => {
     const offset = meta.arrowOffset;
-    return new THREE.Vector3(offset[0], offset[1], offset[2]);
-  }, [meta]);
+    const pos = new THREE.Vector3(offset[0], offset[1], offset[2]);
+    if (nomenclature?.radialExplosionVector) {
+      pos.x += nomenclature.radialExplosionVector[0] * explodedFactor;
+      pos.y += nomenclature.radialExplosionVector[1] * explodedFactor;
+      pos.z += nomenclature.radialExplosionVector[2] * explodedFactor;
+    }
+    return pos;
+  }, [meta, nomenclature, explodedFactor]);
 
   // Leader line vector calculation & exact rotation quaternion
   const { lineMid, lineLen, orientation } = useMemo(() => {
@@ -254,78 +276,26 @@ function MedicalOrganCallout({
         </mesh>
       </group>
 
-      {/* 4. Elegant Interactive Callout Card Badge at start point */}
-      <Html
-        position={[badgePos.x, badgePos.y, badgePos.z]}
-        center
-        style={{ pointerEvents: 'auto' }}
-      >
-        <div className="bg-slate-950/95 backdrop-blur-xl border border-sky-400/70 p-2.5 rounded-xl shadow-2xl max-w-[200px] text-white animate-in fade-in zoom-in-95 duration-200 ring-1 ring-sky-500/20 select-none pointer-events-auto">
-          <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-slate-800">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span
-                className="w-2.5 h-2.5 rounded-full shadow-sm animate-pulse shrink-0"
-                style={{ backgroundColor: meta.color }}
-              />
-              <span className="font-bold text-xs text-white tracking-tight truncate">
-                {lang === 'hi' ? meta.nameHi : meta.nameEn}
-              </span>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onUnzoom();
-              }}
-              title="Close Callout"
-              className="text-slate-400 hover:text-white p-0.5 rounded hover:bg-slate-800 transition-colors"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Finding Alert or Healthy Tag */}
-          <div className="mt-1.5 flex items-center justify-between text-[10px]">
-            {status ? (
-              <span
-                className={`font-bold uppercase px-1.5 py-0.5 rounded-full flex items-center gap-1 ${
-                  status === 'high'
-                    ? 'bg-red-950 text-red-300 border border-red-700/60'
-                    : 'bg-amber-950 text-amber-300 border border-amber-700/60'
-                }`}
-              >
-                <AlertCircle className="w-2.5 h-2.5" />
-                <span>{status === 'high' ? 'High / Elevated' : 'Low / Subnormal'}</span>
-              </span>
-            ) : (
-              <span className="font-medium text-emerald-400 bg-emerald-950/70 px-1.5 py-0.5 rounded-full border border-emerald-800/50 flex items-center gap-1">
-                <CheckCircle2 className="w-2.5 h-2.5" />
-                <span>Normal Limits</span>
-              </span>
-            )}
-
-            <span className="text-[9px] text-slate-400 font-mono">
-              {meta.fmaId}
-            </span>
-          </div>
-
-          {/* Direct Unzoom Button inside Callout */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onUnzoom();
-            }}
-            className="mt-2 w-full py-1 px-2.5 rounded-lg bg-slate-800/90 hover:bg-emerald-900/60 border border-slate-700 hover:border-emerald-500/60 text-slate-200 hover:text-emerald-200 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all shadow group"
-          >
-            <RotateCcw className="w-2.5 h-2.5 text-slate-400 group-hover:text-emerald-400 group-hover:-rotate-90 transition-transform" />
-            <span>{lang === 'hi' ? 'अनज़ूम करें' : 'Unzoom / Reset'}</span>
-          </button>
-        </div>
-      </Html>
+      {/* 4. Sleek 3D Anchor Beacon at start point */}
+      <group position={[badgePos.x, badgePos.y, badgePos.z]}>
+        <mesh>
+          <sphereGeometry args={[0.018, 16, 16]} />
+          <meshStandardMaterial
+            color={accentColor}
+            emissive={accentColor}
+            emissiveIntensity={2.0}
+            roughness={0.1}
+          />
+        </mesh>
+        <mesh rotation={[Math.PI * 0.5, 0, 0]}>
+          <ringGeometry args={[0.024, 0.032, 24]} />
+          <meshBasicMaterial color={accentColor} side={THREE.DoubleSide} transparent opacity={0.7} />
+        </mesh>
+      </group>
     </group>
   );
 }
 
-// 3D Visual Pin Marker with Small Readable Font Organ Name Labels
 // 3D Visual Pin Marker with sleek, non-scaling crisp tooltips
 function WebGLOrganMarker({
   organKey,
@@ -333,6 +303,7 @@ function WebGLOrganMarker({
   isHovered,
   isSelected,
   lang,
+  explodedFactor = 0,
   onSelect,
 }: {
   organKey: OrganKey;
@@ -340,10 +311,21 @@ function WebGLOrganMarker({
   isHovered: boolean;
   isSelected: boolean;
   lang: string;
+  explodedFactor?: number;
   onSelect: (k: OrganKey) => void;
 }) {
   const meta = ORGANS[organKey];
-  const pos = meta.position;
+  const nomenclature = ANATOMICAL_STRUCTURES[organKey];
+  const pos = useMemo(() => {
+    const base = [...meta.position];
+    if (nomenclature?.radialExplosionVector) {
+      base[0] += nomenclature.radialExplosionVector[0] * explodedFactor;
+      base[1] += nomenclature.radialExplosionVector[1] * explodedFactor;
+      base[2] += nomenclature.radialExplosionVector[2] * explodedFactor;
+    }
+    return base;
+  }, [meta.position, nomenclature, explodedFactor]);
+
   const pinRef = useRef<THREE.Group>(null);
   const [localHover, setLocalHover] = useState(false);
 
@@ -362,8 +344,6 @@ function WebGLOrganMarker({
     if (isHovered || localHover) return '#38bdf8';
     return meta.color;
   }, [isSelected, status, isHovered, localHover, meta.color]);
-
-  const showLabel = isSelected || isHovered || localHover || status === 'high' || status === 'low';
 
   return (
     <group
@@ -394,68 +374,23 @@ function WebGLOrganMarker({
         <ringGeometry args={[0.028, 0.038, 24]} />
         <meshBasicMaterial color={pinColor} side={THREE.DoubleSide} transparent opacity={0.8} />
       </mesh>
-
-      {/* Sleek, Non-Scaling Micro-Badge: Only shown on hover/selection/abnormal status */}
-      {showLabel && (
-        <Html
-          position={[0, 0.045, 0]}
-          center
-          style={{ pointerEvents: 'auto' }}
-        >
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(organKey);
-            }}
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-xl border backdrop-blur-md transition-all duration-150 cursor-pointer select-none whitespace-nowrap ${
-              isSelected
-                ? 'bg-emerald-600/95 border-emerald-300 text-white ring-1 ring-emerald-400 scale-105 shadow-emerald-950/80'
-                : status === 'high'
-                ? 'bg-red-950/95 border-red-500/90 text-red-100 ring-1 ring-red-500/50 hover:bg-red-900'
-                : status === 'low'
-                ? 'bg-amber-950/95 border-amber-500/90 text-amber-100 ring-1 ring-amber-500/50 hover:bg-amber-900'
-                : 'bg-slate-900/95 border-slate-700 text-slate-200 hover:border-emerald-400 hover:bg-slate-800'
-            }`}
-          >
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0 shadow-sm"
-              style={{
-                backgroundColor: isSelected
-                  ? '#34d399'
-                  : status === 'high'
-                  ? '#ef4444'
-                  : status === 'low'
-                  ? '#f59e0b'
-                  : meta.color,
-              }}
-            />
-            <span className="font-semibold text-white">
-              {lang === 'hi' ? meta.nameHi : meta.nameEn}
-            </span>
-            {status === 'high' && (
-              <span className="text-[8px] font-black uppercase px-1 rounded bg-red-600 text-white leading-tight">
-                High
-              </span>
-            )}
-            {status === 'low' && (
-              <span className="text-[8px] font-black uppercase px-1 rounded bg-amber-600 text-white leading-tight">
-                Low
-              </span>
-            )}
-          </button>
-        </Html>
-      )}
     </group>
   );
 }
 
-// Individual GLB Organ Component with Stabilized Raycasting
+// Individual GLB Organ Component with Stabilized Raycasting & Radial Exploded Kinematics
 function OrganModel({
   organKey,
   isSelected,
   isHighlighted,
   severity,
   isDimmed = false,
+  isQuizTarget = false,
+  quizAnswerState = null,
+  explodedFactor = 0,
+  clippingPlane = null,
+  animationHeart = true,
+  animationBreathing = true,
   onSelect,
   onHover,
 }: {
@@ -464,11 +399,18 @@ function OrganModel({
   isHighlighted: boolean;
   severity?: 'high' | 'low';
   isDimmed?: boolean;
+  isQuizTarget?: boolean;
+  quizAnswerState?: 'question' | 'correct' | 'incorrect' | null;
+  explodedFactor?: number;
+  clippingPlane?: THREE.Plane | null;
+  animationHeart?: boolean;
+  animationBreathing?: boolean;
   onSelect: (key: OrganKey) => void;
   onHover: (key: OrganKey | null) => void;
 }) {
   const meshRef = useRef<THREE.Group>(null);
   const organMeta = ORGANS[organKey];
+  const nomenclature = ANATOMICAL_STRUCTURES[organKey];
   const [hovered, setHovered] = useState(false);
 
   const { scene } = useGLTF(`/models/${organKey}.glb`);
@@ -491,6 +433,8 @@ function OrganModel({
           emissiveIntensity: 0.05,
           transparent: true,
           opacity: 1.0,
+          clippingPlanes: clippingPlane ? [clippingPlane] : [],
+          clipShadows: true,
         });
         mesh.material = mat;
         mesh.castShadow = true;
@@ -499,25 +443,46 @@ function OrganModel({
       }
     });
     return { clonedScene: clone, materials: mats };
-  }, [scene, organMeta.color]);
+  }, [scene, organMeta.color, clippingPlane]);
+
+  // Dynamically update clipping planes on material uniforms
+  useEffect(() => {
+    materials.forEach((mat) => {
+      mat.clippingPlanes = clippingPlane ? [clippingPlane] : [];
+      mat.clipShadows = true;
+      mat.needsUpdate = true;
+    });
+  }, [materials, clippingPlane]);
 
   // Color calculation
   const targetColor = useMemo(() => {
+    if (isQuizTarget) {
+      if (quizAnswerState === 'correct') return new THREE.Color('#10b981');
+      if (quizAnswerState === 'incorrect') return new THREE.Color('#f43f5e');
+      return new THREE.Color('#f59e0b'); // Vibrant educational gold pulse
+    }
     if (isHighlighted) {
       return severity === 'high' ? new THREE.Color('#ef4444') : new THREE.Color('#f59e0b');
     }
     if (isSelected) return new THREE.Color('#10b981');
     if (hovered) return new THREE.Color('#38bdf8');
     return new THREE.Color(organMeta.color);
-  }, [isHighlighted, severity, isSelected, hovered, organMeta.color]);
+  }, [isQuizTarget, quizAnswerState, isHighlighted, severity, isSelected, hovered, organMeta.color]);
 
   const targetEmissive = useMemo(() => {
+    if (isQuizTarget) {
+      if (quizAnswerState === 'correct') return new THREE.Color('#059669');
+      if (quizAnswerState === 'incorrect') return new THREE.Color('#be123c');
+      return new THREE.Color('#b45309');
+    }
     if (isHighlighted || isSelected) return targetColor;
     if (hovered) return new THREE.Color('#0284c7');
     return new THREE.Color('#000000');
-  }, [isHighlighted, isSelected, hovered, targetColor]);
+  }, [isQuizTarget, quizAnswerState, isHighlighted, isSelected, hovered, targetColor]);
 
-  const targetEmissiveIntensity = isHighlighted ? 0.65 : isSelected ? 0.5 : hovered ? 0.35 : 0.05;
+  const targetEmissiveIntensity = isQuizTarget
+    ? quizAnswerState === 'correct' ? 0.95 : quizAnswerState === 'incorrect' ? 0.85 : 0.75
+    : isHighlighted ? 0.65 : isSelected ? 0.5 : hovered ? 0.35 : 0.05;
 
   // In-place material uniform update (Ultra-fast O(1) WebGL call, zero normal recalculation)
   useEffect(() => {
@@ -525,17 +490,47 @@ function OrganModel({
       mat.color.copy(targetColor);
       mat.emissive.copy(targetEmissive);
       mat.emissiveIntensity = targetEmissiveIntensity;
-      mat.opacity = isDimmed && !isSelected ? 0.16 : 1.0;
+      mat.opacity = isDimmed && !isSelected && !isQuizTarget ? 0.16 : 1.0;
       mat.needsUpdate = true;
     });
-  }, [materials, targetColor, targetEmissive, targetEmissiveIntensity, isDimmed, isSelected]);
+  }, [materials, targetColor, targetEmissive, targetEmissiveIntensity, isDimmed, isSelected, isQuizTarget]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (meshRef.current) {
       const t = state.clock.getElapsedTime();
-      if (organKey === 'heart') {
-        const beat = Math.sin(t * 7.5);
-        const pulse = 1 + (beat > 0.6 ? 0.04 : 0);
+
+      // 1. Radial Exploded View Vector Lerping
+      const radialVec = nomenclature?.radialExplosionVector || [0, 0, 0];
+      const targetX = radialVec[0] * explodedFactor;
+      const targetY = radialVec[1] * explodedFactor;
+      const targetZ = radialVec[2] * explodedFactor;
+      meshRef.current.position.x = THREE.MathUtils.damp(meshRef.current.position.x, targetX, 5.5, delta);
+      meshRef.current.position.y = THREE.MathUtils.damp(meshRef.current.position.y, targetY, 5.5, delta);
+      meshRef.current.position.z = THREE.MathUtils.damp(meshRef.current.position.z, targetZ, 5.5, delta);
+
+      // 2. Synchronized Physiological Multi-Organ Simulations & Quiz Beacon Pulse
+      if (organKey === 'heart' && animationHeart && !isQuizTarget) {
+        // Dual-phase ventricular systole and diastole cycle (72 BPM)
+        const cycle = (t * 1.2) % 1.0;
+        let scale = 1.0;
+        if (cycle < 0.16) {
+          // Sharp systolic ejection contraction
+          scale = 1.0 - Math.sin((cycle / 0.16) * Math.PI) * 0.055;
+        } else if (cycle < 0.38) {
+          // Rapid diastolic elastic recoil filling
+          scale = 1.0 + Math.sin(((cycle - 0.16) / 0.22) * Math.PI) * 0.038;
+        }
+        meshRef.current.scale.set(scale, scale, scale);
+      } else if (organKey === 'lungs' && animationBreathing && !isQuizTarget) {
+        // Respiratory tidal expansion (16 breaths/min = ~0.27 Hz)
+        const breath = Math.sin(t * 1.7);
+        const sX = 1 + breath * 0.045;
+        const sY = 1 + breath * 0.030;
+        const sZ = 1 + breath * 0.050;
+        meshRef.current.scale.set(sX, sY, sZ);
+      } else if (isQuizTarget) {
+        // Prominent educational pulse for quiz question
+        const pulse = 1 + Math.sin(t * 4.2) * 0.045;
         meshRef.current.scale.set(pulse, pulse, pulse);
       } else if (isHighlighted) {
         const pulse = 1 + Math.sin(t * 3.8) * 0.03;
@@ -574,13 +569,15 @@ function OrganModel({
   );
 }
 
-// Outer Body Skin with Pre-instantiated Materials
+// Outer Body Skin with Pre-instantiated Materials & Clipping
 function BodyShell({
   mode = 'hologram',
   opacity = 0.15,
+  clippingPlane = null,
 }: {
   mode: SkinMode;
   opacity: number;
+  clippingPlane?: THREE.Plane | null;
 }) {
   if (mode === 'hidden') return null;
 
@@ -607,6 +604,8 @@ function BodyShell({
         wireframe: true,
         transparent: true,
         opacity: Math.max(0.08, opacity * 0.5),
+        clippingPlanes: clippingPlane ? [clippingPlane] : [],
+        clipShadows: true,
       }),
       solid: new THREE.MeshStandardMaterial({
         color: new THREE.Color('#e2bca8'),
@@ -614,6 +613,8 @@ function BodyShell({
         metalness: 0.05,
         transparent: opacity < 0.95,
         opacity: opacity,
+        clippingPlanes: clippingPlane ? [clippingPlane] : [],
+        clipShadows: true,
       }),
       hologram: new THREE.MeshStandardMaterial({
         color: new THREE.Color('#a7f3d0'),
@@ -623,6 +624,8 @@ function BodyShell({
         opacity: opacity,
         depthWrite: false,
         side: THREE.FrontSide,
+        clippingPlanes: clippingPlane ? [clippingPlane] : [],
+        clipShadows: true,
       }),
       glass: new THREE.MeshStandardMaterial({
         color: new THREE.Color('#e0f2fe'),
@@ -632,25 +635,37 @@ function BodyShell({
         opacity: Math.min(opacity, 0.2),
         depthWrite: false,
         side: THREE.FrontSide,
+        clippingPlanes: clippingPlane ? [clippingPlane] : [],
+        clipShadows: true,
       }),
     };
-  }, []);
+  }, [clippingPlane, opacity]);
 
   useEffect(() => {
     const activeMat = materials[mode] || materials.hologram;
+    activeMat.clippingPlanes = clippingPlane ? [clippingPlane] : [];
     activeMat.opacity = mode === 'wireframe' ? Math.max(0.08, opacity * 0.5) : opacity;
     activeMat.transparent = opacity < 0.98;
+    activeMat.needsUpdate = true;
     meshList.forEach((m) => {
       m.material = activeMat;
     });
-  }, [meshList, mode, opacity, materials]);
+  }, [meshList, mode, opacity, materials, clippingPlane]);
 
   return <primitive object={clonedScene} />;
 }
 
 // Authentic Skeletal System from BodyParts3D (39 authentic meshes: Rib cage 1-12, Sternum, Clavicles, Vertebrae)
-function SkeletalSystem() {
+function SkeletalSystem({
+  clippingPlane = null,
+  explodedFactor = 0,
+}: {
+  clippingPlane?: THREE.Plane | null;
+  explodedFactor?: number;
+}) {
   const { scene } = useGLTF('/models/skeleton.glb');
+  const groupRef = useRef<THREE.Group>(null);
+
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true);
     clone.traverse((child) => {
@@ -663,25 +678,42 @@ function SkeletalSystem() {
           metalness: 0.08,
           transparent: true,
           opacity: 0.85,
+          clippingPlanes: clippingPlane ? [clippingPlane] : [],
+          clipShadows: true,
         });
       }
     });
     return clone;
-  }, [scene]);
+  }, [scene, clippingPlane]);
 
-  return <primitive object={clonedScene} />;
+  useFrame((_, delta) => {
+    if (groupRef.current) {
+      // Ribcage floats subtly outward while vertebral column stays anchored
+      const targetZ = explodedFactor * 0.12;
+      groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, targetZ, 5.0, delta);
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <primitive object={clonedScene} />
+    </group>
+  );
 }
 
 // Authentic Vascular System from BodyParts3D (10 authentic meshes: Aorta, Vena Cava, Pulmonary Trunk, Carotids)
 function VascularSystem({
   animationBloodFlow = true,
   clippingPlane = null,
+  explodedFactor = 0,
 }: {
   animationBloodFlow?: boolean;
   clippingPlane?: THREE.Plane | null;
+  explodedFactor?: number;
 }) {
   const { scene } = useGLTF('/models/vascular.glb');
   const matRef = useRef<THREE.MeshStandardMaterial | null>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true);
@@ -705,15 +737,24 @@ function VascularSystem({
     return clone;
   }, [scene, clippingPlane]);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     if (matRef.current && animationBloodFlow) {
       const t = state.clock.getElapsedTime();
-      const wave = 0.25 + 0.18 * Math.sin(t * 5.5);
+      // Wave pulse propagating through arterial network
+      const wave = 0.25 + 0.45 * Math.pow(Math.max(0, Math.sin(t * 7.5 - 0.4)), 2);
       matRef.current.emissiveIntensity = wave;
+    }
+    if (groupRef.current) {
+      const targetZ = explodedFactor * 0.18;
+      groupRef.current.position.z = THREE.MathUtils.damp(groupRef.current.position.z, targetZ, 5.0, delta);
     }
   });
 
-  return <primitive object={clonedScene} />;
+  return (
+    <group ref={groupRef}>
+      <primitive object={clonedScene} />
+    </group>
+  );
 }
 
 // Muscular System (Superficial & Deep Myological Architecture)
@@ -1030,6 +1071,137 @@ function UrinarySystem({
   );
 }
 
+// Sensory System: The Eye & Visual Axis (matching reference HBE-EYE-3)
+function SensorySystem({
+  clippingPlane = null,
+  isHighlighted = false,
+}: {
+  clippingPlane?: THREE.Plane | null;
+  isHighlighted?: boolean;
+}) {
+  const scleraMat = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#f8fafc'),
+      roughness: 0.2,
+      metalness: 0.05,
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+      clipShadows: true,
+    });
+  }, [clippingPlane]);
+
+  const corneaMat = useMemo(() => {
+    return new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#e0f2fe'),
+      roughness: 0.05,
+      transmission: 0.85,
+      thickness: 0.015,
+      transparent: true,
+      opacity: 0.9,
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+      clipShadows: true,
+    });
+  }, [clippingPlane]);
+
+  const irisMat = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#0284c7'),
+      roughness: 0.3,
+      emissive: new THREE.Color('#0369a1'),
+      emissiveIntensity: 0.4,
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+      clipShadows: true,
+    });
+  }, [clippingPlane]);
+
+  const pupilMat = useMemo(() => {
+    return new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#020617'),
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+    });
+  }, [clippingPlane]);
+
+  const opticNerveMat = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#facc15'),
+      roughness: 0.3,
+      emissive: new THREE.Color('#ca8a04'),
+      emissiveIntensity: 0.5,
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+      clipShadows: true,
+    });
+  }, [clippingPlane]);
+
+  const ocularMuscleMat = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#b91c1c'),
+      roughness: 0.4,
+      transparent: true,
+      opacity: 0.85,
+      clippingPlanes: clippingPlane ? [clippingPlane] : [],
+      clipShadows: true,
+    });
+  }, [clippingPlane]);
+
+  const lightBeamMat = useMemo(() => {
+    return new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#38bdf8'),
+      transparent: true,
+      opacity: 0.35,
+      wireframe: true,
+    });
+  }, []);
+
+  return (
+    <group>
+      {/* Bilateral Eyes situated in facial orbits */}
+      {[-0.038, 0.038].map((xOffset, idx) => (
+        <group key={`eye-${idx}`} position={[xOffset, 2.14, 0.06]}>
+          {/* Scleral Globe */}
+          <mesh material={scleraMat}>
+            <sphereGeometry args={[0.018, 20, 20]} />
+          </mesh>
+          {/* Anterior Cornea Dome */}
+          <mesh position={[0, 0, 0.012]} material={corneaMat}>
+            <sphereGeometry args={[0.011, 16, 16]} />
+          </mesh>
+          {/* Iris Ring */}
+          <mesh position={[0, 0, 0.014]} material={irisMat}>
+            <ringGeometry args={[0.0035, 0.0075, 16]} />
+          </mesh>
+          {/* Pupil Center */}
+          <mesh position={[0, 0, 0.015]} material={pupilMat}>
+            <circleGeometry args={[0.0035, 16]} />
+          </mesh>
+          {/* Optic Nerve descending into cranial cavity */}
+          <mesh position={[0, -0.003, -0.026]} rotation={[0.4, 0, 0]} material={opticNerveMat}>
+            <cylinderGeometry args={[0.004, 0.0035, 0.045, 8]} />
+          </mesh>
+          {/* Extraocular Rectus Muscles */}
+          <mesh position={[0, 0.016, -0.01]} rotation={[-0.2, 0, 0]} material={ocularMuscleMat}>
+            <boxGeometry args={[0.008, 0.004, 0.032]} />
+          </mesh>
+          <mesh position={[0, -0.016, -0.01]} rotation={[0.2, 0, 0]} material={ocularMuscleMat}>
+            <boxGeometry args={[0.008, 0.004, 0.032]} />
+          </mesh>
+
+          {/* Visual Axis Optical Refraction Cone (Radiating Forward) */}
+          <mesh position={[0, 0, 0.08]} rotation={[Math.PI / 2, 0, 0]} material={lightBeamMat}>
+            <coneGeometry args={[0.035, 0.12, 16, 1, true]} />
+          </mesh>
+
+          {/* Retinal / Macular Degeneration Alert Beacon (if highlighted) */}
+          {isHighlighted && (
+            <mesh position={[0, 0, -0.018]}>
+              <sphereGeometry args={[0.008, 12, 12]} />
+              <meshBasicMaterial color="#f59e0b" wireframe />
+            </mesh>
+          )}
+        </group>
+      ))}
+    </group>
+  );
+}
+
 // Scene Root
 function SceneContent({
   activeOrgan,
@@ -1041,6 +1213,9 @@ function SceneContent({
   isolateMode,
   lang,
   onUnzoom,
+  isQuizMode = false,
+  quizTargetOrgan = null,
+  quizAnswerState = null,
 }: {
   activeOrgan: OrganKey | null;
   hoveredOrgan: OrganKey | null;
@@ -1051,12 +1226,23 @@ function SceneContent({
   isolateMode: boolean;
   lang: string;
   onUnzoom: () => void;
+  isQuizMode?: boolean;
+  quizTargetOrgan?: OrganKey | null;
+  quizAnswerState?: 'question' | 'correct' | 'incorrect' | null;
 }) {
-  // Dynamic clipping plane (Plane equation: normal . p + constant = 0)
+  // Dynamic multi-axis clipping plane (Axial / Coronal / Sagittal)
   const clippingPlane = useMemo(() => {
     if (!layers.clippingPlane) return null;
+    const axis = layers.clippingAxis || 'axial';
+    if (axis === 'coronal') {
+      return new THREE.Plane(new THREE.Vector3(0, 0, -1), layers.clippingHeight);
+    }
+    if (axis === 'sagittal') {
+      return new THREE.Plane(new THREE.Vector3(-1, 0, 0), layers.clippingHeight);
+    }
+    // Axial transverse plane (default)
     return new THREE.Plane(new THREE.Vector3(0, -1, 0), layers.clippingHeight);
-  }, [layers.clippingPlane, layers.clippingHeight]);
+  }, [layers.clippingPlane, layers.clippingHeight, layers.clippingAxis]);
 
   return (
     <>
@@ -1099,6 +1285,7 @@ function SceneContent({
           <BodyShell
             mode={layers.skinMode}
             opacity={activeOrgan ? Math.min(layers.skinOpacity, 0.10) : layers.skinOpacity}
+            clippingPlane={clippingPlane}
           />
         </Suspense>
       )}
@@ -1108,14 +1295,17 @@ function SceneContent({
         <MuscularSystem clippingPlane={clippingPlane} />
       )}
 
-      {/* Layer 3: Skeletal System */}
-      {layers.skeleton && !isolateMode && <SkeletalSystem />}
+      {/* Layer 3: Skeletal System with Exploded Kinematics */}
+      {layers.skeleton && !isolateMode && (
+        <SkeletalSystem clippingPlane={clippingPlane} explodedFactor={layers.explodedFactor} />
+      )}
 
       {/* Layer 4: Circulatory Vascular System */}
       {layers.vascular && !isolateMode && (
         <VascularSystem
           animationBloodFlow={layers.animationBloodFlow}
           clippingPlane={clippingPlane}
+          explodedFactor={layers.explodedFactor}
         />
       )}
 
@@ -1139,7 +1329,12 @@ function SceneContent({
         <UrinarySystem clippingPlane={clippingPlane} />
       )}
 
-      {/* Layer 9: Visceral Internal Organs */}
+      {/* Layer: Sensory System (Ocular Axis & Globe matching HBE-EYE-3) */}
+      {(layers.nervous || layers.organs) && !isolateMode && (
+        <SensorySystem clippingPlane={clippingPlane} isHighlighted={highlightedOrgans.has('brain')} />
+      )}
+
+      {/* Layer 9: Visceral Internal Organs with Radial Explosion & Physiological Sync */}
       {layers.organs && (
         <Suspense fallback={null}>
           {ALL_ORGAN_KEYS.map((k) => (
@@ -1150,11 +1345,27 @@ function SceneContent({
               isHighlighted={highlightedOrgans.has(k)}
               severity={highlightedOrgans.get(k)}
               isDimmed={Boolean(isolateMode && activeOrgan && activeOrgan !== k)}
+              isQuizTarget={Boolean(isQuizMode && quizTargetOrgan === k)}
+              quizAnswerState={isQuizMode && quizTargetOrgan === k ? quizAnswerState : null}
+              explodedFactor={layers.explodedFactor}
+              clippingPlane={clippingPlane}
+              animationHeart={layers.animationHeart}
+              animationBreathing={layers.animationBreathing}
               onSelect={onSelectOrgan}
               onHover={onHoverOrgan}
             />
           ))}
         </Suspense>
+      )}
+
+      {/* 3D Quiz Target Organ Pulsing Aura & Focal Light */}
+      {isQuizMode && quizTargetOrgan && (
+        <pointLight
+          position={ORGANS[quizTargetOrgan].position}
+          intensity={quizAnswerState === 'correct' ? 3.8 : quizAnswerState === 'incorrect' ? 3.0 : 2.6}
+          color={quizAnswerState === 'correct' ? '#10b981' : quizAnswerState === 'incorrect' ? '#f43f5e' : '#f59e0b'}
+          distance={1.1}
+        />
       )}
 
       {/* Sleek Medical Leader Callout & Arrow */}
@@ -1163,6 +1374,7 @@ function SceneContent({
           organKey={activeOrgan}
           status={highlightedOrgans.get(activeOrgan)}
           lang={lang}
+          explodedFactor={layers.explodedFactor}
           onUnzoom={onUnzoom}
         />
       )}
@@ -1178,6 +1390,7 @@ function SceneContent({
               isHovered={hoveredOrgan === k}
               isSelected={activeOrgan === k}
               lang={lang}
+              explodedFactor={layers.explodedFactor}
               onSelect={onSelectOrgan}
             />
           ))}
@@ -1351,10 +1564,23 @@ export function AnatomyViewer({
     showArrows: true,
     clippingPlane: false,
     clippingHeight: 1.25,
+    clippingAxis: 'axial',
+    explodedFactor: 0.0,
     animationHeart: true,
     animationBreathing: true,
     animationBloodFlow: true,
   });
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isScanFusionOpen, setIsScanFusionOpen] = useState(false);
+  const [scanFusionOrgan, setScanFusionOrgan] = useState<OrganKey | 'eye' | 'endocrine' | 'urinary'>('heart');
+
+  // Anatomy Quiz Mode State
+  const [isQuizMode, setIsQuizMode] = useState(false);
+  const [quizTargetOrgan, setQuizTargetOrgan] = useState<OrganKey>('heart');
+  const [quizAnswerState, setQuizAnswerState] = useState<'question' | 'correct' | 'incorrect'>('question');
+  const [quizLastClickedOrgan, setQuizLastClickedOrgan] = useState<OrganKey | null>(null);
+  const [quizFocused, setQuizFocused] = useState(false);
 
   const [activeSystemFilter, setActiveSystemFilter] = useState<AnatomicalSystemKey | 'all'>('all');
   const [walletAddress, setWalletAddress] = useState<string | null>(() => web3Service.getAccount());
@@ -1433,7 +1659,15 @@ export function AnatomyViewer({
   }, [selectedFinding]);
 
   const handleSelectOrgan = useCallback((key: OrganKey | null) => {
+    if (isQuizMode && key) {
+      setQuizLastClickedOrgan(key);
+      if (soundEnabled) {
+        playOrganClickChime(560);
+      }
+      return;
+    }
     setCurrentOrgan(key);
+    setIsDrawerOpen(Boolean(key));
     if (soundEnabled) {
       playOrganClickChime(key ? 520 : 380);
     }
@@ -1446,7 +1680,31 @@ export function AnatomyViewer({
         onSelectFinding(null);
       }
     }
-  }, [soundEnabled, onSelectOrgan, onSelectFinding, reportRows]);
+  }, [isQuizMode, soundEnabled, onSelectOrgan, onSelectFinding, reportRows]);
+
+  const handleToggleQuizMode = useCallback(() => {
+    setIsQuizMode((prev) => {
+      const next = !prev;
+      if (next) {
+        const randomOrgan = ALL_ORGAN_KEYS[Math.floor(Math.random() * ALL_ORGAN_KEYS.length)];
+        setQuizTargetOrgan(randomOrgan);
+        setQuizAnswerState('question');
+        setQuizLastClickedOrgan(null);
+        setCurrentOrgan(null);
+        setIsDrawerOpen(false);
+        // Ensure standard skin & organs visibility for anatomical context
+        setLayers((l) => ({
+          ...l,
+          skin: true,
+          skinMode: 'wireframe',
+          skeleton: true,
+          organs: true,
+          explodedFactor: 0,
+        }));
+      }
+      return next;
+    });
+  }, []);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -1501,10 +1759,11 @@ export function AnatomyViewer({
 
   // Smooth camera position with angle presets (auto-calibrated for mobile vs desktop)
   const { targetPos, targetLookAt } = useMemo(() => {
-    if (currentOrgan && ORGANS[currentOrgan]) {
-      const meta = ORGANS[currentOrgan];
+    const organToFocus = isQuizMode ? (quizFocused ? quizTargetOrgan : null) : currentOrgan;
+    if (organToFocus && ORGANS[organToFocus]) {
+      const meta = ORGANS[organToFocus];
       const pos = meta.position;
-      const dist = meta.cameraDistance * (isMobile ? 1.25 : 1.0);
+      const dist = meta.cameraDistance * (isMobile ? 1.4 : 1.15);
       return {
         targetPos: new THREE.Vector3(pos[0] * 0.35, pos[1], pos[2] + dist),
         targetLookAt: new THREE.Vector3(pos[0], pos[1], pos[2]),
@@ -1540,7 +1799,7 @@ export function AnatomyViewer({
       targetPos: new THREE.Vector3(0, isMobile ? 1.10 : 1.25, zoomDist),
       targetLookAt: new THREE.Vector3(0, isMobile ? 1.05 : 1.15, 0),
     };
-  }, [currentOrgan, cameraAngle, isMobile]);
+  }, [currentOrgan, cameraAngle, isMobile, isQuizMode, quizFocused, quizTargetOrgan]);
 
   // Deep scan of all report rows to identify critical / high-risk organs
   const highRiskOrgans = useMemo(() => {
@@ -2061,10 +2320,45 @@ export function AnatomyViewer({
               />
             </div>
 
+            {/* Anatomy Quiz Mode Button in Top Bar */}
+            <button
+              onClick={handleToggleQuizMode}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                isQuizMode
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg ring-2 ring-amber-300'
+                  : 'bg-amber-950/85 backdrop-blur-md text-amber-200 hover:bg-amber-900 border border-amber-600/70'
+              }`}
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-amber-300" />
+              <span>{lang === 'hi' ? 'क्विज़ मोड' : 'Anatomy Quiz'}</span>
+              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-amber-900 text-amber-200">
+                {isQuizMode ? 'ACTIVE' : 'START'}
+              </span>
+            </button>
+
+            {/* Multimodal Diagnostic Scan Fusion Toggle (Matching Reference Attachments HBE-*) */}
+            <button
+              onClick={() => {
+                setScanFusionOrgan(currentOrgan || 'heart');
+                setIsScanFusionOpen((prev) => !prev);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                isScanFusionOpen
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg ring-2 ring-cyan-400'
+                  : 'bg-cyan-950/85 backdrop-blur-md text-cyan-200 hover:bg-cyan-900 border border-cyan-500/70'
+              }`}
+            >
+              <Scan className="w-3.5 h-3.5 text-cyan-300" />
+              <span>{lang === 'hi' ? 'डायग्नोस्टिक स्कैन' : 'Scan Fusion'}</span>
+              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-900 text-cyan-200">
+                {isScanFusionOpen ? 'VIEWING' : 'HBE'}
+              </span>
+            </button>
+
             <button
               onClick={() => handleSelectOrgan(null)}
               className={`px-3 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
-                currentOrgan === null
+                currentOrgan === null && !isQuizMode
                   ? 'bg-emerald-600 text-white shadow-lg'
                   : 'bg-slate-900/85 backdrop-blur-md text-slate-300 hover:bg-slate-800 border border-slate-700'
               }`}
@@ -2118,45 +2412,7 @@ export function AnatomyViewer({
             ))}
           </div>
 
-          {/* Interactive Clipping Plane Height Controller */}
-          {layers.clippingPlane && (
-            <div className="absolute bottom-16 left-4 z-10 flex items-center gap-2 bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-cyan-500/50 shadow-xl text-xs text-cyan-200 pointer-events-auto animate-in fade-in">
-              <Scissors className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="font-semibold">Plane Height:</span>
-              <input
-                type="range"
-                min="0.1"
-                max="2.1"
-                step="0.05"
-                value={layers.clippingHeight}
-                onChange={(e) =>
-                  setLayers((prev) => ({ ...prev, clippingHeight: parseFloat(e.target.value) }))
-                }
-                className="w-24 h-1.5 accent-cyan-400 bg-slate-700 rounded-lg cursor-pointer"
-              />
-              <span className="font-mono text-[10px] text-cyan-300">{layers.clippingHeight.toFixed(2)}m</span>
-            </div>
-          )}
-
-          {/* Anatomical Systems Dock Filter */}
-          <div className="absolute bottom-14 sm:bottom-4 right-4 z-10 hidden md:flex items-center gap-1 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/80 shadow-xl pointer-events-auto">
-            <span className="text-[10px] font-bold text-slate-400 px-1.5 uppercase tracking-wider">Systems:</span>
-            {(['all', 'skeletal', 'muscular', 'nervous', 'cardiovascular', 'digestive', 'urinary', 'endocrine'] as const).map((sys) => (
-              <button
-                key={sys}
-                onClick={() => handleToggleSystem(sys)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold capitalize transition-all ${
-                  activeSystemFilter === sys
-                    ? 'bg-cyan-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                {sys}
-              </button>
-            ))}
-          </div>
-
-          {/* Hover Status Indicator floating in bottom corner */}
+          {/* Hover Status Indicator floating in top corner */}
           {hoveredOrgan && (
             <div className="absolute top-14 left-4 z-10 pointer-events-none px-3 py-1 rounded-xl bg-slate-900/90 border border-sky-400/50 text-sky-200 text-xs font-bold shadow-lg animate-in fade-in duration-100 flex items-center gap-2">
               <Crosshair className="w-3.5 h-3.5 text-sky-400 animate-spin" />
@@ -2166,52 +2422,21 @@ export function AnatomyViewer({
             </div>
           )}
 
-          {/* Camera Angles Presets Floating Toolbar */}
-          <div className="absolute bottom-4 left-4 z-10 flex flex-wrap items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-700/80 shadow-xl pointer-events-auto">
-            <span className="text-[11px] font-bold text-slate-400 px-2 flex items-center gap-1">
-              <Compass className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{lang === 'hi' ? 'कैमरा:' : 'View:'}</span>
-            </span>
-            {(['front', 'back', 'left', 'right', 'top'] as const).map((ang) => (
+          {/* Active Inspected Organ Overlay Badge (Main DOM tree) */}
+          {currentOrgan && !isQuizMode && (
+            <div className="absolute top-14 right-4 z-10 pointer-events-auto px-3 py-1.5 rounded-xl bg-slate-900/95 border border-emerald-400/60 text-white text-xs font-bold shadow-xl flex items-center gap-2 animate-in fade-in duration-150">
+              <span
+                className="w-2.5 h-2.5 rounded-full shadow-sm animate-pulse"
+                style={{ backgroundColor: ORGANS[currentOrgan].color }}
+              />
+              <span>{lang === 'hi' ? ORGANS[currentOrgan].nameHi : ORGANS[currentOrgan].nameEn}</span>
+              <span className="text-[10px] font-mono text-emerald-300">({ORGANS[currentOrgan].fmaId})</span>
               <button
-                key={ang}
-                onClick={() => {
-                  setCurrentOrgan(null);
-                  setCameraAngle(ang);
-                }}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold capitalize transition-all ${
-                  cameraAngle === ang && !currentOrgan
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                }`}
+                onClick={() => handleSelectOrgan(null)}
+                title="Full Body / Reset"
+                className="ml-1 p-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               >
-                {ang}
-              </button>
-            ))}
-            <button
-              onClick={() => {
-                handleSelectOrgan(null);
-                setCameraAngle('front');
-              }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/60 transition-all border border-emerald-800/40"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>{t('anatomy.resetCamera')}</span>
-            </button>
-          </div>
-
-          {/* Mobile Floating Button to switch to Report Findings */}
-          {reportRows.length > 0 && (
-            <div className="absolute top-12 right-4 z-10 flex lg:hidden">
-              <button
-                onClick={() => setMobileTab('findings')}
-                className="px-3 py-1.5 rounded-2xl bg-slate-900/95 backdrop-blur-md border border-emerald-500/70 text-emerald-300 text-xs font-bold shadow-xl flex items-center gap-1.5 pointer-events-auto"
-              >
-                <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Findings ({reportRows.length})</span>
-                {highRiskOrgans.length > 0 && (
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                )}
+                <RotateCcw className="w-3 h-3 text-emerald-400" />
               </button>
             </div>
           )}
@@ -2233,6 +2458,7 @@ export function AnatomyViewer({
                 antialias: true,
                 alpha: true,
                 powerPreference: 'high-performance',
+                localClippingEnabled: true,
               }}
             >
               <StabilizedCameraController
@@ -2251,8 +2477,89 @@ export function AnatomyViewer({
                 isolateMode={isolateMode}
                 lang={lang}
                 onUnzoom={() => handleSelectOrgan(null)}
+                isQuizMode={isQuizMode}
+                quizTargetOrgan={quizTargetOrgan}
+                quizAnswerState={quizAnswerState}
               />
             </Canvas>
+          )}
+
+          {/* Consolidated Ergonomic Control Dock at bottom of viewport */}
+          <ErgonomicControlDock
+            layers={layers}
+            onUpdateLayers={setLayers}
+            activeSystem={activeSystemFilter}
+            onSelectSystem={handleToggleSystem}
+            cameraAngle={cameraAngle}
+            onSetCameraAngle={(ang: 'front' | 'back' | 'left' | 'right' | 'top') => {
+              setCurrentOrgan(null);
+              setCameraAngle(ang);
+            }}
+            autoRotate={autoRotate}
+            onToggleAutoRotate={() => setAutoRotate((p) => !p)}
+            isolateMode={isolateMode}
+            onToggleIsolateMode={() => setIsolateMode((p) => !p)}
+            onResetView={() => {
+              handleSelectOrgan(null);
+              setCameraAngle('front');
+            }}
+            hasActiveOrgan={Boolean(currentOrgan)}
+            isQuizMode={isQuizMode}
+            onToggleQuizMode={handleToggleQuizMode}
+          />
+
+          {/* Interactive Clinical Drawer (when inspecting outside quiz or after answering) */}
+          <ClinicalDrawer
+            organKey={currentOrgan}
+            isOpen={isDrawerOpen && Boolean(currentOrgan) && !isQuizMode && !isScanFusionOpen}
+            onClose={() => {
+              setIsDrawerOpen(false);
+              handleSelectOrgan(null);
+            }}
+            reportRows={reportRows}
+            selectedFinding={selectedFinding}
+            onSelectFinding={onSelectFinding}
+            onOpenChatWithSymptom={onOpenChatWithSymptom}
+            attestationProof={attestationProof}
+            onOpenScanFusion={(org) => {
+              setScanFusionOrgan(org);
+              setIsScanFusionOpen(true);
+            }}
+          />
+
+          {/* Multimodal Diagnostic Scan Fusion Workstation (matching attached reference images) */}
+          {isScanFusionOpen && (
+            <DiagnosticScanFusionPanel
+              organKey={scanFusionOrgan}
+              onClose={() => setIsScanFusionOpen(false)}
+              onOpenChatWithClinicalFocus={onOpenChatWithSymptom}
+            />
+          )}
+
+          {/* Interactive Anatomy Quiz HUD */}
+          {isQuizMode && (
+            <AnatomyQuizHUD
+              currentHighlightedOrgan={quizTargetOrgan}
+              onSetHighlightedOrgan={(org) => {
+                setQuizTargetOrgan(org);
+                setQuizAnswerState('question');
+                setQuizLastClickedOrgan(null);
+                setQuizFocused(false);
+              }}
+              onZoomToOrgan={() => {
+                setQuizFocused((prev) => !prev);
+              }}
+              onExitQuiz={() => {
+                setIsQuizMode(false);
+                setQuizFocused(false);
+              }}
+              soundEnabled={soundEnabled}
+              onToggleSound={() => setSoundEnabled((prev) => !prev)}
+              onAnswerEvaluated={(isCorrect) => {
+                setQuizAnswerState(isCorrect ? 'correct' : 'incorrect');
+              }}
+              lastDirectClickedOrgan={quizLastClickedOrgan}
+            />
           )}
         </div>
 

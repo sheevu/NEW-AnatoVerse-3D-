@@ -165,7 +165,7 @@ ${JSON.stringify(rows)}`;
 
 // Start local server if run directly
 const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = '0.0.0.0';
 
 serve({ fetch: app.fetch, port: PORT, hostname: HOST }, (info) => {
   console.log(`VedaShield AI Hono Server running on http://${info.address}:${info.port}`);

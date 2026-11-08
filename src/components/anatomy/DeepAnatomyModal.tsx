@@ -99,7 +99,7 @@ export function DeepAnatomyModal({
               </div>
               <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
                 <HardDrive className="w-3.5 h-3.5 text-teal-400" />
-                <span>Source: D:\CODEX2025-2026\RAHUL-SIR\Asstes\isa_BP3D_4.0_obj_99</span>
+                <span>Source: BodyParts3D 4.0 & Terminologia Anatomica 2 (TA2 / FMA)</span>
               </p>
             </div>
           </div>
