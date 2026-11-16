@@ -45,6 +45,52 @@ export interface TestRow {
   clinicalNote?: string;
 }
 
+export interface PrescribedMedication {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  timing: string;
+  duration: string;
+  purposeEn?: string;
+  purposeHi?: string;
+  targetOrgan?: OrganKey | null;
+}
+
+export interface VitalSigns {
+  systolicBP?: number;
+  diastolicBP?: number;
+  heartRate?: number;
+  spO2?: number;
+  weightKg?: number;
+  temperatureF?: number;
+}
+
+export interface PrescriptionDetails {
+  doctorName: string;
+  specialty?: string;
+  clinicName: string;
+  rxDate: string;
+  diagnosis: string;
+  chiefComplaints?: string;
+  medications: PrescribedMedication[];
+  vitals?: VitalSigns;
+  adviceNotes: string;
+  followUpDate?: string;
+  rawScrapedText?: string;
+}
+
+export interface MedicineBiomarkerCorrelation {
+  medicine: string;
+  dosage: string;
+  linkedBiomarker: string;
+  clinicalRationaleEn: string;
+  clinicalRationaleHi: string;
+  precautionNoteEn?: string;
+  precautionNoteHi?: string;
+  organ?: OrganKey | null;
+}
+
 export interface MedicalReport {
   id: string;
   profileId: string;
@@ -58,6 +104,13 @@ export interface MedicalReport {
   aiSummaryEn?: string;
   aiSummaryHi?: string;
   prescribedMedicines?: string[];
+  prescriptionDetails?: PrescriptionDetails;
+  vitals?: VitalSigns;
+  combinedSynthesisEn?: string;
+  combinedSynthesisHi?: string;
+  medicineCorrelations?: MedicineBiomarkerCorrelation[];
+  actionableRecommendationsEn?: string[];
+  actionableRecommendationsHi?: string[];
   fileUrl?: string;
   verified: boolean;
   createdAt: string;

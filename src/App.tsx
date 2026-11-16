@@ -128,7 +128,10 @@ export function App() {
     }
   };
 
-  const handleReportSaved = async (report: MedicalReport) => {
+  const handleReportSaved = async (
+    report: MedicalReport,
+    targetTab: 'insights' | 'anatomy' = 'insights'
+  ) => {
     await saveReport(report);
     const updatedReports = await getReports(activeProfileId);
     setReports(updatedReports);
@@ -138,7 +141,7 @@ export function App() {
       setFocusOrgan(firstAbnormal.organ);
       setSelectedFinding(firstAbnormal);
     }
-    setCurrentTab('anatomy');
+    setCurrentTab(targetTab);
   };
 
   const handleNavigateToAnatomy = (organKey?: OrganKey, finding?: TestRow) => {
@@ -209,6 +212,7 @@ export function App() {
               setCurrentTab('insights');
             }}
             onOpenWhatsAppShare={handleOpenWhatsAppShare}
+            onNavigateToAnatomy={handleNavigateToAnatomy}
           />
         )}
 

@@ -3,7 +3,7 @@ import { SAMPLE_REPORTS } from './sampleReports';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const PROFILES_KEY = 'vedashield_profiles_v2';
-const REPORTS_KEY = 'vedashield_reports_v2';
+const REPORTS_KEY = 'vedashield_reports_v3';
 const ACTIVE_PROFILE_KEY = 'vedashield_active_profile_v2';
 
 const DEFAULT_PROFILES: FamilyProfile[] = [
@@ -167,24 +167,36 @@ export async function getReports(profileId?: string): Promise<MedicalReport[]> {
 
   const raw = localStorage.getItem(REPORTS_KEY);
   if (!raw) {
-    // Populate sample reports linked to default self and mother profiles
+    // Populate multi-point historical sample reports linked to default self and mother profiles
     const seeded: MedicalReport[] = [
+      {
+        id: 'rep-sample-0',
+        profileId: 'prof-self',
+        ...SAMPLE_REPORTS[0],
+        createdAt: new Date(Date.now() - 1 * 86400000).toISOString()
+      },
       {
         id: 'rep-sample-1',
         profileId: 'prof-self',
-        ...SAMPLE_REPORTS[0],
-        createdAt: new Date(Date.now() - 3 * 86400000).toISOString()
+        ...SAMPLE_REPORTS[1],
+        createdAt: new Date(Date.now() - 15 * 86400000).toISOString()
       },
       {
         id: 'rep-sample-2',
         profileId: 'prof-self',
-        ...SAMPLE_REPORTS[1],
-        createdAt: new Date(Date.now() - 28 * 86400000).toISOString()
+        ...SAMPLE_REPORTS[2],
+        createdAt: new Date(Date.now() - 42 * 86400000).toISOString()
       },
       {
         id: 'rep-sample-3',
+        profileId: 'prof-self',
+        ...SAMPLE_REPORTS[3],
+        createdAt: new Date(Date.now() - 80 * 86400000).toISOString()
+      },
+      {
+        id: 'rep-sample-mother-1',
         profileId: 'prof-mother',
-        ...SAMPLE_REPORTS[2],
+        ...SAMPLE_REPORTS[3],
         createdAt: new Date(Date.now() - 60 * 86400000).toISOString()
       }
     ];

@@ -1,15 +1,168 @@
 import { MedicalReport } from '../types';
-import { organFor, rangeStatus } from './medicalRules';
+import { organFor } from './medicalRules';
+import { PRESCRIPTION_PRESETS } from './aiScanner';
+import { buildLocalCombinedInsights } from './aiInsights';
+
+function enrichReportWithSynthesis(
+  base: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt'>
+): Omit<MedicalReport, 'id' | 'profileId' | 'createdAt'> {
+  const synth = buildLocalCombinedInsights(
+    base.rows,
+    base.prescriptionDetails,
+    base.doctorNotes
+  );
+  return {
+    ...base,
+    aiSummaryEn: base.aiSummaryEn || synth.summaryEn,
+    aiSummaryHi: base.aiSummaryHi || synth.summaryHi,
+    combinedSynthesisEn: synth.combinedSynthesisEn,
+    combinedSynthesisHi: synth.combinedSynthesisHi,
+    medicineCorrelations: synth.medicineCorrelations,
+    actionableRecommendationsEn: synth.actionableRecommendationsEn,
+    actionableRecommendationsHi: synth.actionableRecommendationsHi,
+  };
+}
 
 export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt'>[] = [
-  {
+  enrichReportWithSynthesis({
+    title: 'Comprehensive Metabolic, Lipid & Rx Follow-Up',
+    date: '2026-10-28',
+    labName: 'Dr. Lal PathLabs / Indraprastha Apollo, New Delhi',
+    type: 'lab',
+    verified: true,
+    doctorNotes:
+      'Improving glycemic and lipid trajectory after 6 weeks of Metformin 500mg and Atorvastatin 10mg. Continue Telmisartan 40mg daily.',
+    prescribedMedicines: [
+      'Metformin Hydrochloride (Glycomet SR) 500 mg',
+      'Atorvastatin (Atorva) 10 mg',
+      'Telmisartan (Telma) 40 mg',
+    ],
+    vitals: {
+      systolicBP: 126,
+      diastolicBP: 80,
+      heartRate: 72,
+      spO2: 99,
+      weightKg: 74.8,
+    },
+    prescriptionDetails: {
+      ...PRESCRIPTION_PRESETS[0],
+      rxDate: '2026-10-28',
+      vitals: {
+        systolicBP: 126,
+        diastolicBP: 80,
+        heartRate: 72,
+        spO2: 99,
+        weightKg: 74.8,
+      },
+    },
+    rows: [
+      {
+        id: 'r101',
+        name: 'Fasting Blood Glucose',
+        value: '106',
+        numericValue: 106,
+        unit: 'mg/dL',
+        range: '70 - 99',
+        status: 'high',
+        organ: organFor('Fasting Blood Glucose'),
+        clinicalNote: 'Improved from 118 mg/dL; approaching normal fasting threshold.',
+      },
+      {
+        id: 'r102',
+        name: 'HbA1c (Glycated Hemoglobin)',
+        value: '6.0',
+        numericValue: 6.0,
+        unit: '%',
+        range: '< 5.7',
+        status: 'high',
+        organ: organFor('HbA1c'),
+        clinicalNote: 'Downward trend from 6.4% with lifestyle and Metformin therapy.',
+      },
+      {
+        id: 'r103',
+        name: 'Total Cholesterol',
+        value: '194',
+        numericValue: 194,
+        unit: 'mg/dL',
+        range: '< 200',
+        status: 'within',
+        organ: organFor('Total Cholesterol'),
+        clinicalNote: 'Normalized below 200 mg/dL target on Atorvastatin 10mg.',
+      },
+      {
+        id: 'r104',
+        name: 'LDL Cholesterol',
+        value: '112',
+        numericValue: 112,
+        unit: 'mg/dL',
+        range: '< 100',
+        status: 'high',
+        organ: organFor('LDL Cholesterol'),
+        clinicalNote: 'Significantly reduced from 142 mg/dL.',
+      },
+      {
+        id: 'r105',
+        name: 'HDL Cholesterol',
+        value: '48',
+        numericValue: 48,
+        unit: 'mg/dL',
+        range: '> 40',
+        status: 'within',
+        organ: organFor('HDL Cholesterol'),
+        clinicalNote: 'Healthy cardioprotective HDL fraction.',
+      },
+      {
+        id: 'r106',
+        name: 'Serum Triglycerides',
+        value: '148',
+        numericValue: 148,
+        unit: 'mg/dL',
+        range: '< 150',
+        status: 'within',
+        organ: organFor('Serum Triglycerides'),
+        clinicalNote: 'Within normal reference bounds.',
+      },
+      {
+        id: 'r107',
+        name: 'Serum Creatinine',
+        value: '0.91',
+        numericValue: 0.91,
+        unit: 'mg/dL',
+        range: '0.7 - 1.3',
+        status: 'within',
+        organ: organFor('Serum Creatinine'),
+        clinicalNote: 'Normal glomerular filtration baseline.',
+      },
+      {
+        id: 'r108',
+        name: 'SGPT / ALT',
+        value: '32',
+        numericValue: 32,
+        unit: 'U/L',
+        range: '7 - 56',
+        status: 'within',
+        organ: organFor('SGPT / ALT'),
+        clinicalNote: 'Normal hepatic enzyme activity.',
+      },
+    ],
+  }),
+  enrichReportWithSynthesis({
     title: 'Comprehensive Metabolic & Lipid Panel',
     date: '2026-09-15',
     labName: 'Dr. Lal PathLabs / SRL Diagnostics, New Delhi',
     type: 'lab',
     verified: true,
-    doctorNotes: 'Fasting 12 hours. Advised dietary reduction in refined carbohydrates and re-testing in 90 days.',
-    prescribedMedicines: ['Atorvastatin 10mg', 'Metformin 500mg'],
+    doctorNotes:
+      'Fasting 12 hours. Advised dietary reduction in refined carbohydrates, low-salt intake, and re-testing in 6–12 weeks.',
+    prescribedMedicines: ['Atorvastatin 10mg', 'Metformin 500mg', 'Telmisartan 40mg'],
+    vitals: {
+      systolicBP: 136,
+      diastolicBP: 86,
+      heartRate: 78,
+      spO2: 98,
+      weightKg: 76.4,
+    },
+    prescriptionDetails: PRESCRIPTION_PRESETS[0],
     rows: [
       {
         id: 'r1',
@@ -20,7 +173,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '70 - 99',
         status: 'high',
         organ: organFor('Fasting Blood Glucose'),
-        clinicalNote: 'Impaired fasting glucose range. Correlate with HbA1c.'
+        clinicalNote: 'Impaired fasting glucose range. Correlate with HbA1c.',
       },
       {
         id: 'r2',
@@ -31,7 +184,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '< 5.7',
         status: 'high',
         organ: organFor('HbA1c'),
-        clinicalNote: 'Prediabetes tier (5.7% to 6.4%). Lifestyle counseling advised.'
+        clinicalNote: 'Prediabetes tier (5.7% to 6.4%). Lifestyle counseling advised.',
       },
       {
         id: 'r3',
@@ -42,7 +195,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '< 200',
         status: 'high',
         organ: organFor('Total Cholesterol'),
-        clinicalNote: 'Borderline elevated. Discuss dietary modifications.'
+        clinicalNote: 'Borderline elevated. Discuss dietary modifications.',
       },
       {
         id: 'r4',
@@ -53,7 +206,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '< 100',
         status: 'high',
         organ: organFor('LDL Cholesterol'),
-        clinicalNote: 'Primary atherogenic marker. Targets vary with cardiovascular profile.'
+        clinicalNote: 'Primary atherogenic marker. Targets vary with cardiovascular profile.',
       },
       {
         id: 'r5',
@@ -64,7 +217,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '> 40',
         status: 'within',
         organ: organFor('HDL Cholesterol'),
-        clinicalNote: 'Protective lipid carrier within standard acceptable limits.'
+        clinicalNote: 'Protective lipid carrier within standard acceptable limits.',
       },
       {
         id: 'r6',
@@ -75,7 +228,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '< 150',
         status: 'high',
         organ: organFor('Serum Triglycerides'),
-        clinicalNote: 'Moderately elevated. Responsive to sugar reduction and aerobic exercise.'
+        clinicalNote: 'Moderately elevated. Responsive to sugar reduction and aerobic exercise.',
       },
       {
         id: 'r7',
@@ -86,31 +239,42 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '0.7 - 1.3',
         status: 'within',
         organ: organFor('Serum Creatinine'),
-        clinicalNote: 'Normal glomerular filtration baseline.'
+        clinicalNote: 'Normal glomerular filtration baseline.',
       },
       {
         id: 'r8',
         name: 'SGPT / ALT',
-        value: '36',
-        numericValue: 36,
+        value: '46',
+        numericValue: 46,
         unit: 'U/L',
         range: '7 - 56',
         status: 'within',
         organ: organFor('SGPT / ALT'),
-        clinicalNote: 'Hepatic transaminase activity within normal bounds.'
-      }
+        clinicalNote: 'Hepatic transaminase activity within normal bounds.',
+      },
     ],
-    aiSummaryEn: 'This routine health screening shows mildly elevated fasting glucose (118 mg/dL) and borderline HbA1c (6.4%), which fall into the pre-diabetes bracket. Total cholesterol and LDL are also mildly raised, while renal filtration (creatinine) and liver transaminases are healthy. Discuss nutrition, physical activity, and repeat testing with your doctor.',
-    aiSummaryHi: 'इस नियमित स्वास्थ्य जांच में फास्टिंग ग्लूकोज (118 mg/dL) और एचबीए1सी (6.4%) थोड़े बढ़े हुए पाए गए हैं, जो प्रीडायबिटीज श्रेणी में आते हैं। कोलेस्ट्रॉल और एलडीएल भी हल्के बढ़े हुए हैं, जबकि गुर्दे और लिवर के पैरामीटर पूरी तरह सामान्य हैं। डॉक्टर से आहार और जीवनशैली में सुधार पर चर्चा करें।'
-  },
-  {
-    title: 'Liver Function & Abdominal Enzymes',
+    aiSummaryEn:
+      'This routine health screening shows mildly elevated fasting glucose (118 mg/dL) and borderline HbA1c (6.4%), which fall into the pre-diabetes bracket. Total cholesterol (228 mg/dL) and LDL (142 mg/dL) are also mildly raised, while renal filtration (creatinine) and liver transaminases are healthy.',
+    aiSummaryHi:
+      'इस नियमित स्वास्थ्य जांच में फास्टिंग ग्लूकोज (118 mg/dL) और एचबीए1सी (6.4%) थोड़े बढ़े हुए पाए गए हैं, जो प्रीडायबिटीज श्रेणी में आते हैं। कोलेस्ट्रॉल और एलडीएल भी हल्के बढ़े हुए हैं, जबकि गुर्दे और लिवर के पैरामीटर पूरी तरह सामान्य हैं।',
+  }),
+  enrichReportWithSynthesis({
+    title: 'Liver Function & Cardio-Metabolic Screening',
     date: '2026-08-20',
     labName: 'Apollo Diagnostics, Mumbai',
     type: 'lab',
     verified: true,
-    doctorNotes: 'Evaluated post mild abdominal bloating. Advised hydration and avoiding paracetamol overuse.',
+    doctorNotes:
+      'Evaluated post mild abdominal bloating. Advised hydration, low-fat diet, and avoiding paracetamol overuse.',
     prescribedMedicines: ['UDCA 300mg', 'Pantoprazole 40mg'],
+    vitals: {
+      systolicBP: 138,
+      diastolicBP: 88,
+      heartRate: 80,
+      spO2: 98,
+      weightKg: 77.2,
+    },
+    prescriptionDetails: PRESCRIPTION_PRESETS[1],
     rows: [
       {
         id: 'l1',
@@ -121,7 +285,7 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '7 - 56',
         status: 'high',
         organ: 'liver',
-        clinicalNote: 'Mild elevation. Often associated with fatty liver changes or medication impact.'
+        clinicalNote: 'Mild elevation. Often associated with fatty liver changes or medication impact.',
       },
       {
         id: 'l2',
@@ -132,53 +296,96 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '10 - 40',
         status: 'high',
         organ: 'liver',
-        clinicalNote: 'Elevated. Monitor AST/ALT ratio in conjunction with clinical symptoms.'
+        clinicalNote: 'Elevated. Monitor AST/ALT ratio in conjunction with clinical symptoms.',
       },
       {
         id: 'l3',
-        name: 'Total Bilirubin',
-        value: '1.0',
-        numericValue: 1.0,
+        name: 'Fasting Blood Glucose',
+        value: '124',
+        numericValue: 124,
         unit: 'mg/dL',
-        range: '0.2 - 1.2',
-        status: 'within',
-        organ: 'liver',
-        clinicalNote: 'Normal biliary clearance without evidence of jaundice.'
+        range: '70 - 99',
+        status: 'high',
+        organ: 'pancreas',
+        clinicalNote: 'Elevated fasting blood sugar.',
       },
       {
         id: 'l4',
-        name: 'Alkaline Phosphatase (ALP)',
-        value: '95',
-        numericValue: 95,
-        unit: 'U/L',
-        range: '44 - 147',
-        status: 'within',
-        organ: 'liver',
-        clinicalNote: 'Normal biliary ductal and bone metabolism.'
+        name: 'Total Cholesterol',
+        value: '238',
+        numericValue: 238,
+        unit: 'mg/dL',
+        range: '< 200',
+        status: 'high',
+        organ: 'heart',
+        clinicalNote: 'Elevated total cholesterol associated with fatty liver.',
       },
       {
         id: 'l5',
-        name: 'Serum Amylase',
-        value: '65',
-        numericValue: 65,
-        unit: 'U/L',
-        range: '28 - 100',
+        name: 'LDL Cholesterol',
+        value: '151',
+        numericValue: 151,
+        unit: 'mg/dL',
+        range: '< 100',
+        status: 'high',
+        organ: 'heart',
+        clinicalNote: 'Elevated LDL fraction.',
+      },
+      {
+        id: 'l6',
+        name: 'HDL Cholesterol',
+        value: '41',
+        numericValue: 41,
+        unit: 'mg/dL',
+        range: '> 40',
         status: 'within',
-        organ: 'pancreas',
-        clinicalNote: 'Pancreatic digestive enzyme secretion is normal.'
-      }
+        organ: 'heart',
+        clinicalNote: 'Borderline normal HDL.',
+      },
+      {
+        id: 'l7',
+        name: 'Serum Triglycerides',
+        value: '198',
+        numericValue: 198,
+        unit: 'mg/dL',
+        range: '< 150',
+        status: 'high',
+        organ: 'heart',
+        clinicalNote: 'Elevated triglycerides.',
+      },
+      {
+        id: 'l8',
+        name: 'Serum Creatinine',
+        value: '0.98',
+        numericValue: 0.98,
+        unit: 'mg/dL',
+        range: '0.7 - 1.3',
+        status: 'within',
+        organ: 'kidneys',
+        clinicalNote: 'Normal renal clearance.',
+      },
     ],
-    aiSummaryEn: 'Liver transaminases (ALT at 68 U/L and AST at 52 U/L) are mildly above reference thresholds, while bilirubin and alkaline phosphatase are completely normal. Mild transaminase bumps are common with fatty liver changes, weight fluctuations, or certain medications. Review with your physician for appropriate lifestyle guidance.',
-    aiSummaryHi: 'लिवर एंजाइम (ALT 68 U/L और AST 52 U/L) सामान्य सीमा से थोड़े अधिक हैं, जबकि बिलीरुबिन पूरी तरह सामान्य है। यह फैटी लिवर या कुछ दवाओं के प्रभाव से हो सकता है। खान-पान में वसा कम करने और डॉक्टर की सलाह अनुसार आगे की जांच कराएं।'
-  },
-  {
+    aiSummaryEn:
+      'Liver transaminases (ALT at 68 U/L and AST at 52 U/L) alongside Fasting Glucose (124 mg/dL) and Total Cholesterol (238 mg/dL) are mildly above reference thresholds. Review with your physician for hepatoprotective and metabolic lifestyle guidance.',
+    aiSummaryHi:
+      'लिवर एंजाइम (ALT 68 U/L और AST 52 U/L) तथा कोलेस्ट्रॉल (238 mg/dL) सामान्य सीमा से थोड़े अधिक हैं। यह फैटी लिवर की ओर संकेत करता है।',
+  }),
+  enrichReportWithSynthesis({
     title: 'Complete Blood Count (CBC) & Hemogram',
     date: '2026-07-10',
     labName: 'Max Healthcare Pathology, Gurugram',
     type: 'lab',
     verified: true,
-    doctorNotes: 'Screening for fatigue. Iron-rich diet recommended.',
-    prescribedMedicines: ['Autrin Iron Capsule', 'Vitamin C 500mg'],
+    doctorNotes: 'Screening for fatigue. Iron-rich diet and Vitamin C supplementation recommended.',
+    prescribedMedicines: ['Ferrous Ascorbate + Folic Acid (Orofer XT)', 'Vitamin C 500mg'],
+    vitals: {
+      systolicBP: 142,
+      diastolicBP: 90,
+      heartRate: 84,
+      spO2: 98,
+      weightKg: 78.1,
+    },
+    prescriptionDetails: PRESCRIPTION_PRESETS[2],
     rows: [
       {
         id: 'c1',
@@ -189,43 +396,67 @@ export const SAMPLE_REPORTS: Omit<MedicalReport, 'id' | 'profileId' | 'createdAt
         range: '12.0 - 15.5',
         status: 'low',
         organ: 'lungs',
-        clinicalNote: 'Mild microcytic anemia picture. Check ferritin and iron stores.'
+        clinicalNote: 'Mild microcytic anemia picture. Check ferritin and iron stores.',
       },
       {
         id: 'c2',
-        name: 'Total Leukocyte Count (WBC)',
-        value: '6800',
-        numericValue: 6800,
-        unit: '/cumm',
-        range: '4000 - 11000',
-        status: 'within',
-        organ: 'intestines',
-        clinicalNote: 'Normal immune cell count, no signs of acute infection.'
+        name: 'Fasting Blood Glucose',
+        value: '129',
+        numericValue: 129,
+        unit: 'mg/dL',
+        range: '70 - 99',
+        status: 'high',
+        organ: 'pancreas',
+        clinicalNote: 'Elevated fasting glucose.',
       },
       {
         id: 'c3',
-        name: 'Platelet Count',
-        value: '240000',
-        numericValue: 240000,
-        unit: '/cumm',
-        range: '150000 - 450000',
-        status: 'within',
-        organ: 'intestines',
-        clinicalNote: 'Healthy clotting cell baseline.'
+        name: 'Total Cholesterol',
+        value: '246',
+        numericValue: 246,
+        unit: 'mg/dL',
+        range: '< 200',
+        status: 'high',
+        organ: 'heart',
+        clinicalNote: 'Elevated cholesterol baseline.',
       },
       {
         id: 'c4',
-        name: 'ESR (Erythrocyte Sedimentation Rate)',
-        value: '18',
-        numericValue: 18,
-        unit: 'mm/hr',
-        range: '< 20',
+        name: 'LDL Cholesterol',
+        value: '158',
+        numericValue: 158,
+        unit: 'mg/dL',
+        range: '< 100',
+        status: 'high',
+        organ: 'heart',
+        clinicalNote: 'Elevated LDL cholesterol.',
+      },
+      {
+        id: 'c5',
+        name: 'SGPT / ALT',
+        value: '62',
+        numericValue: 62,
+        unit: 'U/L',
+        range: '7 - 56',
+        status: 'high',
+        organ: 'liver',
+        clinicalNote: 'Mildly elevated transaminase.',
+      },
+      {
+        id: 'c6',
+        name: 'Serum Creatinine',
+        value: '1.02',
+        numericValue: 1.02,
+        unit: 'mg/dL',
+        range: '0.7 - 1.3',
         status: 'within',
-        organ: 'intestines',
-        clinicalNote: 'Systemic inflammatory marker within expected limits.'
-      }
+        organ: 'kidneys',
+        clinicalNote: 'Normal renal function.',
+      },
     ],
-    aiSummaryEn: 'The Complete Blood Count reveals a mildly reduced Hemoglobin level of 10.8 g/dL (normal range 12.0 - 15.5 g/dL), indicating mild anemia which is common in Indian populations and often responds well to iron and dietary supplementation. Platelets and White Blood Cells are healthy.',
-    aiSummaryHi: 'सीबीसी रिपोर्ट में हीमोग्लोबिन 10.8 g/dL पाया गया है, जो सामान्य सीमा (12.0 - 15.5) से कम है। यह हल्के एनीमिया की ओर इशारा करता है, जो अक्सर आयरन और संतुलित आहार से ठीक हो जाता है। प्लेटलेट्स और श्वेत रक्त कोशिकाएं बिल्कुल सामान्य हैं।'
-  }
+    aiSummaryEn:
+      'The Complete Blood Count reveals a mildly reduced Hemoglobin level of 10.8 g/dL (normal range 12.0 - 15.5 g/dL), alongside baseline elevated lipids and glucose.',
+    aiSummaryHi:
+      'सीबीसी रिपोर्ट में हीमोग्लोबिन 10.8 g/dL पाया गया है, जो सामान्य सीमा (12.0 - 15.5) से कम है।',
+  }),
 ];
